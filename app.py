@@ -1,162 +1,50 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>이미지 제출</title>
-  <style>
-    .dropdown {
-      position: relative;
-      display: inline-block;
-      margin-right: 10px;
+from flask import Flask, request, render_template
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from datetime import datetime
+import os
+
+app = Flask(__name__)
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Google Drive API 설정
+SERVICE_ACCOUNT_FILE = 'driveuploader-463205-7e7fccdb08c6.json'
+SCOPES = ['https://www.googleapis.com/auth/drive']
+FOLDER_ID = '1xLL7Mqu767CMCk38gsOgwQiSOmAsKZ3r'
+
+credentials = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+drive_service = build('drive', 'v3', credentials=credentials)
+
+def upload_to_drive(file_path, file_name):
+    file_metadata = {
+        'name': file_name,
+        'parents': [FOLDER_ID]
     }
-    .dropdown-content {
-      display: none;
-      position: absolute;
-      background-color: #f9f9f9;
-      min-width: 160px;
-      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-      z-index: 1;
-    }
-    .dropdown-content button {
-      background-color: white;
-      border: none;
-      padding: 10px;
-      width: 100%;
-      text-align: left;
-      cursor: pointer;
-    }
-    .dropdown:hover .dropdown-content {
-      display: block;
-    }
-    .dropdown-content button.selected {
-      background-color: #4caf50;
-      color: white;
-    }
-    #form-section { margin-bottom: 10px; }
-    .input-label { margin-right: 5px; }
-    .dropdown-label {
-      margin-right: 20px;
-      display: inline-block;
-      font-weight: bold;
-    }
-    #submit-btn {
-      margin-top: 15px;
-      padding: 10px 20px;
-      font-size: 16px;
-      background-color: #4caf50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-  <h2>이름/학년/반/번호 선택 후 Ctrl+V 또는 버튼으로 이미지 제출</h2>
+    media = MediaFileUpload(file_path, mimetype='image/png')
+    file = drive_service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields='id'
+    ).execute()
+    return file.get('id')
 
-  <div id="form-section">
-    <label class="input-label">이름:</label>
-    <input type="text" id="name-input" placeholder="이름 입력" />
-  </div>
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-  <div id="form-section">
-    <div class="dropdown">
-      <button id="grade-btn">학년 선택 ▾</button>
-      <div class="dropdown-content" id="grade-group"></div>
-    </div>
-    <span class="dropdown-label">학년</span>
+@app.route('/upload', methods=['POST'])
+def upload():
+    name = request.form.get('name', 'unknown')
+    file = request.files['file']
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{name}_{timestamp}.png"
+    local_path = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(local_path)
+    upload_to_drive(local_path, filename)
+    return 'OK'
 
-    <div class="dropdown">
-      <button id="class-btn">반 선택 ▾</button>
-      <div class="dropdown-content" id="class-group"></div>
-    </div>
-    <span class="dropdown-label">반</span>
-
-    <div class="dropdown">
-      <button id="number-btn">번호 선택 ▾</button>
-      <div class="dropdown-content" id="number-group"></div>
-    </div>
-    <span class="dropdown-label">번</span>
-  </div>
-
-  <div id="paste-area" contenteditable="true" style="border:2px dashed gray; height:200px; margin-top:10px;"></div>
-
-  <button id="submit-btn">제출하기</button>
-
-  <script>
-    function createDropdownButtons(containerId, buttonId, count) {
-      const container = document.getElementById(containerId);
-      const button = document.getElementById(buttonId);
-      for (let i = 1; i <= count; i++) {
-        const btn = document.createElement('button');
-        btn.textContent = i;
-        btn.onclick = () => {
-          [...container.children].forEach(b => b.classList.remove('selected'));
-          btn.classList.add('selected');
-          button.textContent = i + ' ▾';
-        };
-        container.appendChild(btn);
-      }
-    }
-
-    createDropdownButtons('grade-group', 'grade-btn', 3);
-    createDropdownButtons('class-group', 'class-btn', 6);
-    createDropdownButtons('number-group', 'number-btn', 25);
-
-    async function submitImageFromPasteData(items) {
-      const name = document.getElementById('name-input').value.trim();
-      const grade = document.querySelector('#grade-group .selected')?.textContent;
-      const ban = document.querySelector('#class-group .selected')?.textContent;
-      const number = document.querySelector('#number-group .selected')?.textContent;
-
-      if (!name || !grade || !ban || !number) return alert("이름, 학년, 반, 번호를 모두 입력 및 선택하세요!");
-
-      for (let item of items) {
-        if (item.type.indexOf("image") !== -1) {
-          const blob = item.getAsFile();
-          const formData = new FormData();
-          formData.append("name", `${grade}-${ban}-${number}-${name}`);
-          formData.append("file", blob);
-          const res = await fetch("/upload", { method: "POST", body: formData });
-          if (res.ok) {
-            alert("제출 완료!");
-            document.getElementById("paste-area").innerHTML = ""; // 이미지 영역 초기화
-          }
-        }
-      }
-    }
-
-    document.getElementById("paste-area").addEventListener("paste", function(e) {
-      const items = (e.clipboardData || window.clipboardData).items;
-      submitImageFromPasteData(items);
-    });
-
-    document.getElementById("submit-btn").addEventListener("click", async () => {
-      const pasteArea = document.getElementById("paste-area");
-      const items = (await navigator.clipboard.read()).flatMap(data =>
-        data.types.includes('image/png') ? [data.getType('image/png')] : []
-      );
-      if (items.length === 0) {
-        alert("클립보드에 이미지가 없습니다. Ctrl+V로 붙여넣기 해주세요.");
-        return;
-      }
-      const blob = await items[0];
-      const name = document.getElementById('name-input').value.trim();
-      const grade = document.querySelector('#grade-group .selected')?.textContent;
-      const ban = document.querySelector('#class-group .selected')?.textContent;
-      const number = document.querySelector('#number-group .selected')?.textContent;
-
-      if (!name || !grade || !ban || !number) return alert("이름, 학년, 반, 번호를 모두 입력 및 선택하세요!");
-
-      const formData = new FormData();
-      formData.append("name", `${grade}-${ban}-${number}-${name}`);
-      formData.append("file", new Blob([await blob.arrayBuffer()], { type: 'image/png' }));
-      const res = await fetch("/upload", { method: "POST", body: formData });
-      if (res.ok) {
-        alert("제출 완료!");
-        document.getElementById("paste-area").innerHTML = ""; // 이미지 영역 초기화
-      }
-    });
-  </script>
-</body>
-</html>
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
