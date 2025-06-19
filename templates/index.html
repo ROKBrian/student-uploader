@@ -47,73 +47,77 @@
   <!-- 기존 내용 동일 -->
 
   <script>
-    let pastedImageBlobs = [];
+document.addEventListener("DOMContentLoaded", () => {
+  let pastedImageBlobs = [];
 
-    function displayImage(blob) {
-      pastedImageBlobs.push(blob);
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        const img = document.createElement("img");
-        img.src = evt.target.result;
-        img.classList.add("pasted-image");
-        img.title = "우클릭하면 삭제됩니다.";
-        img.oncontextmenu = function(ev) {
-          ev.preventDefault();
-          pastedImageBlobs = pastedImageBlobs.filter(b => b !== blob);
-          img.remove();
-        };
-        document.getElementById("paste-area").appendChild(img);
+  function displayImage(blob) {
+    pastedImageBlobs.push(blob);
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      const img = document.createElement("img");
+      img.src = evt.target.result;
+      img.classList.add("pasted-image");
+      img.title = "우클릭하면 삭제됩니다.";
+      img.oncontextmenu = function(ev) {
+        ev.preventDefault();
+        pastedImageBlobs = pastedImageBlobs.filter(b => b !== blob);
+        img.remove();
       };
-      reader.readAsDataURL(blob);
+      document.getElementById("paste-area").appendChild(img);
+    };
+    reader.readAsDataURL(blob);
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    [...e.dataTransfer.files].forEach(file => {
+      if (file.type.startsWith("image/")) {
+        displayImage(file);
+      }
+    });
+  }
+
+  document.getElementById("paste-area").addEventListener("drop", handleDrop);
+
+  document.getElementById("paste-area").addEventListener("paste", async function(e) {
+    const items = (e.clipboardData || window.clipboardData).items;
+    for (let item of items) {
+      if (item.type.indexOf("image") !== -1) {
+        const blob = item.getAsFile();
+        displayImage(blob);
+      }
+    }
+  });
+
+  document.getElementById("clear-btn").addEventListener("click", () => {
+    document.getElementById("paste-area").innerHTML = "";
+    pastedImageBlobs = [];
+  });
+
+  document.getElementById("submit-btn").addEventListener("click", async () => {
+    if (pastedImageBlobs.length === 0) {
+      alert("먼저 이미지를 붙여넣어 주세요.");
+      return;
     }
 
-    function handleDrop(e) {
-      e.preventDefault();
-      [...e.dataTransfer.files].forEach(file => {
-        if (file.type.startsWith("image/")) {
-          displayImage(file);
-        }
-      });
+    const name = document.getElementById('name-input').value.trim();
+    const grade = document.querySelector('#grade-group .selected')?.textContent;
+    const ban = document.querySelector('#class-group .selected')?.textContent;
+    const number = document.querySelector('#number-group .selected')?.textContent;
+    if (!name || !grade || !ban || !number) return alert("이름, 학년, 반, 번호를 모두 입력 및 선택하세요!");
+
+    for (let i = 0; i < pastedImageBlobs.length; i++) {
+      const formData = new FormData();
+      formData.append("name", `${grade}-${ban}-${number}-${name}_${i+1}`);
+      formData.append("file", pastedImageBlobs[i]);
+      await fetch("/upload", { method: "POST", body: formData });
     }
 
-    document.getElementById("paste-area").addEventListener("paste", async function(e) {
-      const items = (e.clipboardData || window.clipboardData).items;
-      for (let item of items) {
-        if (item.type.indexOf("image") !== -1) {
-          const blob = item.getAsFile();
-          displayImage(blob);
-        }
-      }
-    });
-
-    document.getElementById("clear-btn").addEventListener("click", () => {
-      document.getElementById("paste-area").innerHTML = "";
-      pastedImageBlobs = [];
-    });
-
-    document.getElementById("submit-btn").addEventListener("click", async () => {
-      if (pastedImageBlobs.length === 0) {
-        alert("먼저 이미지를 붙여넣어 주세요.");
-        return;
-      }
-
-      const name = document.getElementById('name-input').value.trim();
-      const grade = document.querySelector('#grade-group .selected')?.textContent;
-      const ban = document.querySelector('#class-group .selected')?.textContent;
-      const number = document.querySelector('#number-group .selected')?.textContent;
-      if (!name || !grade || !ban || !number) return alert("이름, 학년, 반, 번호를 모두 입력 및 선택하세요!");
-
-      for (let i = 0; i < pastedImageBlobs.length; i++) {
-        const formData = new FormData();
-        formData.append("name", `${grade}-${ban}-${number}-${name}_${i+1}`);
-        formData.append("file", pastedImageBlobs[i]);
-        await fetch("/upload", { method: "POST", body: formData });
-      }
-
-      alert("제출 완료!");
-      document.getElementById("paste-area").innerHTML = "";
-      pastedImageBlobs = [];
-    });
-  </script>
+    alert("제출 완료!");
+    document.getElementById("paste-area").innerHTML = "";
+    pastedImageBlobs = [];
+  });
+});
+</script>
 </body>
 </html>
