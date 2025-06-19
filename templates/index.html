@@ -40,11 +40,14 @@
       gap: 10px;
       padding: 10px;
     }
+    #submit-status {
+      margin-top: 10px;
+      font-weight: bold;
+      color: green;
+    }
   </style>
 </head>
 <body>
-  
-
   <div id="form-section">
     <label class="input-label">이름:</label>
     <input type="text" id="name-input" placeholder="이름 입력" />
@@ -66,9 +69,10 @@
   </div>
 
   <button id="submit-btn">제출하기 (提交 / Отправить)</button>
-<button id="clear-btn">전부 삭제 (全部删除 / Удалить всё)</button>
+  <button id="clear-btn">전부 삭제 (全部删除 / Удалить всё)</button>
+  <div id="submit-status"></div>
 
-<h2>
+  <h2>
     Window + Shift + S로 캡처하고 이름, 학년, 반, 번호를 입력 후<br>
     Ctrl + V 또는 드래그해서 붙여넣고 제출하기 버튼을 클릭하세요.<br>
     <small>
@@ -137,9 +141,11 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("clear-btn").addEventListener("click", () => {
     document.getElementById("paste-area").innerHTML = "";
     pastedImageBlobs = [];
+    document.getElementById("submit-status").textContent = "";
   });
 
   document.getElementById("submit-btn").addEventListener("click", async () => {
+    const statusEl = document.getElementById("submit-status");
     if (pastedImageBlobs.length === 0) {
       alert("먼저 이미지를 붙여넣어 주세요.");
       return;
@@ -154,6 +160,11 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const submitBtn = document.getElementById("submit-btn");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "⏳ 제출 중...";
+    statusEl.textContent = "";
+
     for (let i = 0; i < pastedImageBlobs.length; i++) {
       const formData = new FormData();
       formData.append("name", `${grade}-${ban}-${number}-${name}_${i+1}`);
@@ -162,6 +173,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     alert("제출 완료!");
+    submitBtn.disabled = false;
+    submitBtn.textContent = "제출하기 (提交 / Отправить)";
+    statusEl.textContent = "✅ 제출 완료 (提交完成 / Отправлено)";
     document.getElementById("paste-area").innerHTML = "";
     pastedImageBlobs = [];
   });
