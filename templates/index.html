@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Window + Shift + S로 캡처하고 이름, 학년, 반, 번호를 입력 후 Ctrl + V로 붙여넣고 제출하기 버튼을 클릭하세요.(여러 개 입력 가능)</title>
+  <title>학생 이미지 제출 도구</title>
   <style>
     .dropdown { position: relative; display: inline-block; margin-right: 10px; }
     .dropdown-content { display: none; position: absolute; background-color: #f9f9f9; min-width: 160px; box-shadow: 0px 8px 16px rgba(0,0,0,0.2); z-index: 1; }
@@ -33,7 +33,6 @@
     }
     #paste-area {
       border: 2px dashed gray;
-      height: auto;
       min-height: 200px;
       margin-top: 10px;
       display: flex;
@@ -44,11 +43,49 @@
   </style>
 </head>
 <body>
-  <!-- 기존 내용 동일 -->
+  <h2>Window + Shift + S로 캡처하고 이름, 학년, 반, 번호를 입력 후<br>Ctrl + V 또는 드래그해서 붙여넣고 제출하기 버튼을 클릭하세요.</h2>
 
-  <script>
+  <div id="form-section">
+    <label class="input-label">이름:</label>
+    <input type="text" id="name-input" placeholder="이름 입력" />
+  </div>
+
+  <div id="form-section">
+    <div class="dropdown"><button id="grade-btn">학년 선택 ▾</button><div class="dropdown-content" id="grade-group"></div></div>
+    <span class="dropdown-label">학년</span>
+    <div class="dropdown"><button id="class-btn">반 선택 ▾</button><div class="dropdown-content" id="class-group"></div></div>
+    <span class="dropdown-label">반</span>
+    <div class="dropdown"><button id="number-btn">번호 선택 ▾</button><div class="dropdown-content" id="number-group"></div></div>
+    <span class="dropdown-label">번</span>
+  </div>
+
+  <div id="paste-area"
+       contenteditable="true"
+       ondragover="event.preventDefault();"
+       ondrop="handleDrop(event)">
+  </div>
+
+  <button id="submit-btn">제출하기</button>
+  <button id="clear-btn">전부 삭제</button>
+
+<script>
 document.addEventListener("DOMContentLoaded", () => {
   let pastedImageBlobs = [];
+
+  function createDropdownButtons(containerId, buttonId, count) {
+    const container = document.getElementById(containerId);
+    const button = document.getElementById(buttonId);
+    for (let i = 1; i <= count; i++) {
+      const btn = document.createElement('button');
+      btn.textContent = i;
+      btn.onclick = () => {
+        [...container.children].forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        button.textContent = i + ' ▾';
+      };
+      container.appendChild(btn);
+    }
+  }
 
   function displayImage(blob) {
     pastedImageBlobs.push(blob);
@@ -68,18 +105,17 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.readAsDataURL(blob);
   }
 
-  function handleDrop(e) {
+  window.handleDrop = function(e) {
     e.preventDefault();
-    [...e.dataTransfer.files].forEach(file => {
+    const files = e.dataTransfer.files;
+    for (const file of files) {
       if (file.type.startsWith("image/")) {
         displayImage(file);
       }
-    });
-  }
+    }
+  };
 
-  document.getElementById("paste-area").addEventListener("drop", handleDrop);
-
-  document.getElementById("paste-area").addEventListener("paste", async function(e) {
+  document.getElementById("paste-area").addEventListener("paste", function(e) {
     const items = (e.clipboardData || window.clipboardData).items;
     for (let item of items) {
       if (item.type.indexOf("image") !== -1) {
@@ -104,7 +140,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const grade = document.querySelector('#grade-group .selected')?.textContent;
     const ban = document.querySelector('#class-group .selected')?.textContent;
     const number = document.querySelector('#number-group .selected')?.textContent;
-    if (!name || !grade || !ban || !number) return alert("이름, 학년, 반, 번호를 모두 입력 및 선택하세요!");
+    if (!name || !grade || !ban || !number) {
+      alert("이름, 학년, 반, 번호를 모두 입력 및 선택하세요!");
+      return;
+    }
 
     for (let i = 0; i < pastedImageBlobs.length; i++) {
       const formData = new FormData();
@@ -117,6 +156,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("paste-area").innerHTML = "";
     pastedImageBlobs = [];
   });
+
+  createDropdownButtons('grade-group', 'grade-btn', 3);
+  createDropdownButtons('class-group', 'class-btn', 6);
+  createDropdownButtons('number-group', 'number-btn', 25);
 });
 </script>
 </body>
