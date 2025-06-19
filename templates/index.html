@@ -2,11 +2,8 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>
-Window + Shift + S로 캡처하고 이름, 학년, 반, 번호를 입력 후 Ctrl + V로 붙여넣고 제출하기 버튼을 클릭하세요.<br>
-按下 Window + Shift + S 进行截图，填写姓名、年级、班级和号码后，按 Ctrl + V 粘贴图片，并点击“提交”按钮。<br>
-Нажмите Window + Shift + S, чтобы сделать снимок экрана. Затем введите имя, класс и номер, нажмите Ctrl + V для вставки изображения и нажмите кнопку «Отправить».
-</title>
+  <title>학생 이미지 제출 도구</title>
+  <style>
     .dropdown { position: relative; display: inline-block; margin-right: 10px; }
     .dropdown-content { display: none; position: absolute; background-color: #f9f9f9; min-width: 160px; box-shadow: 0px 8px 16px rgba(0,0,0,0.2); z-index: 1; }
     .dropdown-content button { background: white; border: none; padding: 10px; width: 100%; text-align: left; cursor: pointer; }
@@ -36,7 +33,6 @@ Window + Shift + S로 캡처하고 이름, 학년, 반, 번호를 입력 후 Ctr
     }
     #paste-area {
       border: 2px dashed gray;
-      height: auto;
       min-height: 200px;
       margin-top: 10px;
       display: flex;
@@ -47,8 +43,17 @@ Window + Shift + S로 캡처하고 이름, 학년, 반, 번호를 입력 후 Ctr
   </style>
 </head>
 <body>
+  <h2>
+    Window + Shift + S로 캡처하고 이름, 학년, 반, 번호를 입력 후<br>
+    Ctrl + V 또는 드래그해서 붙여넣고 제출하기 버튼을 클릭하세요.<br>
+    <small>
+      🇨🇳 按下 Window + Shift + S 截图，填写姓名、年级、班级和号码后，按 Ctrl + V 粘贴图片或拖放图片，然后点击“提交”按钮。<br>
+      🇷🇺 Нажмите Window + Shift + S для создания снимка экрана. Затем введите имя, класс и номер, вставьте изображение через Ctrl + V или перетащите его и нажмите кнопку «Отправить».
+    </small>
+  </h2>
+
   <div id="form-section">
-    <label class="input-label">이름</label>
+    <label class="input-label">이름:</label>
     <input type="text" id="name-input" placeholder="이름 입력" />
   </div>
 
@@ -61,13 +66,33 @@ Window + Shift + S로 캡처하고 이름, 학년, 반, 번호를 입력 후 Ctr
     <span class="dropdown-label">번</span>
   </div>
 
-  <div id="paste-area" contenteditable="true" ondragover="event.preventDefault();" ondrop="handleDrop(event)"></div>
+  <div id="paste-area"
+       contenteditable="true"
+       ondragover="event.preventDefault();"
+       ondrop="handleDrop(event)">
+  </div>
+
   <button id="submit-btn">제출하기 (提交 / Отправить)</button>
   <button id="clear-btn">전부 삭제 (全部删除 / Удалить всё)</button>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   let pastedImageBlobs = [];
+
+  function createDropdownButtons(containerId, buttonId, count) {
+    const container = document.getElementById(containerId);
+    const button = document.getElementById(buttonId);
+    for (let i = 1; i <= count; i++) {
+      const btn = document.createElement('button');
+      btn.textContent = i;
+      btn.onclick = () => {
+        [...container.children].forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        button.textContent = i + ' ▾';
+      };
+      container.appendChild(btn);
+    }
+  }
 
   function displayImage(blob) {
     pastedImageBlobs.push(blob);
@@ -87,18 +112,17 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.readAsDataURL(blob);
   }
 
-  function handleDrop(e) {
+  window.handleDrop = function(e) {
     e.preventDefault();
-    [...e.dataTransfer.files].forEach(file => {
+    const files = e.dataTransfer.files;
+    for (const file of files) {
       if (file.type.startsWith("image/")) {
         displayImage(file);
       }
-    });
-  }
+    }
+  };
 
-  document.getElementById("paste-area").addEventListener("drop", handleDrop);
-
-  document.getElementById("paste-area").addEventListener("paste", async function(e) {
+  document.getElementById("paste-area").addEventListener("paste", function(e) {
     const items = (e.clipboardData || window.clipboardData).items;
     for (let item of items) {
       if (item.type.indexOf("image") !== -1) {
@@ -123,7 +147,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const grade = document.querySelector('#grade-group .selected')?.textContent;
     const ban = document.querySelector('#class-group .selected')?.textContent;
     const number = document.querySelector('#number-group .selected')?.textContent;
-    if (!name || !grade || !ban || !number) return alert("이름, 학년, 반, 번호를 모두 입력 및 선택하세요!");
+    if (!name || !grade || !ban || !number) {
+      alert("이름, 학년, 반, 번호를 모두 입력 및 선택하세요!");
+      return;
+    }
 
     for (let i = 0; i < pastedImageBlobs.length; i++) {
       const formData = new FormData();
@@ -136,6 +163,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("paste-area").innerHTML = "";
     pastedImageBlobs = [];
   });
+
+  createDropdownButtons('grade-group', 'grade-btn', 3);
+  createDropdownButtons('class-group', 'class-btn', 6);
+  createDropdownButtons('number-group', 'number-btn', 25);
 });
 </script>
 </body>
