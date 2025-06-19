@@ -24,8 +24,22 @@
       margin-right: 10px;
     }
     img.pasted-image {
-      max-width: 100%;
+      max-width: 200px;
+      max-height: 200px;
+      object-fit: cover;
+      margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #paste-area {
+      border: 2px dashed gray;
+      height: auto;
+      min-height: 200px;
       margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 10px;
     }
   </style>
 </head>
@@ -50,7 +64,7 @@
     <span class="dropdown-label">번</span>
   </div>
 
-  <div id="paste-area" contenteditable="true" style="border:2px dashed gray; height:200px; margin-top:10px;" ondragover="event.preventDefault();" ondrop="handleDrop(event)"></div>
+  <div id="paste-area" contenteditable="true" ondragover="event.preventDefault();" ondrop="handleDrop(event)"></div>
   <button id="submit-btn">제출하기 (提交 / Отправить)</button>
   <button id="clear-btn">전부 삭제 (全部删除 / Удалить всё)</button>
 
@@ -85,7 +99,6 @@
           pastedImageBlob = null;
           img.remove();
         };
-        document.getElementById("paste-area").innerHTML = "";
         document.getElementById("paste-area").appendChild(img);
       };
       reader.readAsDataURL(blob);
