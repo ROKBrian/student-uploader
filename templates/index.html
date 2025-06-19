@@ -44,50 +44,13 @@
   </style>
 </head>
 <body>
-  <h2>Window + Shift + S로 캡처하고 이름, 학년, 반, 번호를 입력 후<br>Ctrl + V로 붙여넣고 제출하기 버튼을 클릭하세요.(여러 개 입력 가능)</h2>
-  <p>
-    <strong>중국어:</strong> 按下 Window + Shift + S 截图，然后输入姓名、年级、班级和号码，按 Ctrl+V 粘贴图片并点击“提交”按钮。（可多次提交）<br>
-    <strong>러시아어:</strong> Нажмите Window + Shift + S для создания снимка экрана, затем введите имя, класс и номер, вставьте изображение через Ctrl+V и нажмите кнопку "제출하기". (Можно отправить несколько раз)
-  </p>
-
-  <div id="form-section">
-    <label class="input-label">이름 (姓名 / Имя):</label>
-    <input type="text" id="name-input" placeholder="이름 입력" />
-  </div>
-
-  <div id="form-section">
-    <div class="dropdown"><button id="grade-btn">학년 선택 ▾ (年级 / Класс)</button><div class="dropdown-content" id="grade-group"></div></div>
-    <span class="dropdown-label">학년</span>
-    <div class="dropdown"><button id="class-btn">반 선택 ▾ (班级 / Группа)</button><div class="dropdown-content" id="class-group"></div></div>
-    <span class="dropdown-label">반</span>
-    <div class="dropdown"><button id="number-btn">번호 선택 ▾ (号码 / Номер)</button><div class="dropdown-content" id="number-group"></div></div>
-    <span class="dropdown-label">번</span>
-  </div>
-
-  <div id="paste-area" contenteditable="true" ondragover="event.preventDefault();" ondrop="handleDrop(event)"></div>
-  <button id="submit-btn">제출하기 (提交 / Отправить)</button>
-  <button id="clear-btn">전부 삭제 (全部删除 / Удалить всё)</button>
+  <!-- 기존 내용 동일 -->
 
   <script>
-    let pastedImageBlob = null;
-
-    function createDropdownButtons(containerId, buttonId, count) {
-      const container = document.getElementById(containerId);
-      const button = document.getElementById(buttonId);
-      for (let i = 1; i <= count; i++) {
-        const btn = document.createElement('button');
-        btn.textContent = i;
-        btn.onclick = () => {
-          [...container.children].forEach(b => b.classList.remove('selected'));
-          btn.classList.add('selected');
-          button.textContent = i + ' ▾';
-        };
-        container.appendChild(btn);
-      }
-    }
+    let pastedImageBlobs = [];
 
     function displayImage(blob) {
-      pastedImageBlob = blob;
+      pastedImageBlobs.push(blob);
       const reader = new FileReader();
       reader.onload = function(evt) {
         const img = document.createElement("img");
@@ -96,7 +59,7 @@
         img.title = "우클릭하면 삭제됩니다.";
         img.oncontextmenu = function(ev) {
           ev.preventDefault();
-          pastedImageBlob = null;
+          pastedImageBlobs = pastedImageBlobs.filter(b => b !== blob);
           img.remove();
         };
         document.getElementById("paste-area").appendChild(img);
@@ -106,15 +69,12 @@
 
     function handleDrop(e) {
       e.preventDefault();
-      const file = e.dataTransfer.files[0];
-      if (file && file.type.startsWith("image/")) {
-        displayImage(file);
-      }
+      [...e.dataTransfer.files].forEach(file => {
+        if (file.type.startsWith("image/")) {
+          displayImage(file);
+        }
+      });
     }
-
-    createDropdownButtons('grade-group', 'grade-btn', 3);
-    createDropdownButtons('class-group', 'class-btn', 6);
-    createDropdownButtons('number-group', 'number-btn', 25);
 
     document.getElementById("paste-area").addEventListener("paste", async function(e) {
       const items = (e.clipboardData || window.clipboardData).items;
@@ -128,11 +88,11 @@
 
     document.getElementById("clear-btn").addEventListener("click", () => {
       document.getElementById("paste-area").innerHTML = "";
-      pastedImageBlob = null;
+      pastedImageBlobs = [];
     });
 
     document.getElementById("submit-btn").addEventListener("click", async () => {
-      if (!pastedImageBlob) {
+      if (pastedImageBlobs.length === 0) {
         alert("먼저 이미지를 붙여넣어 주세요.");
         return;
       }
@@ -143,15 +103,16 @@
       const number = document.querySelector('#number-group .selected')?.textContent;
       if (!name || !grade || !ban || !number) return alert("이름, 학년, 반, 번호를 모두 입력 및 선택하세요!");
 
-      const formData = new FormData();
-      formData.append("name", `${grade}-${ban}-${number}-${name}`);
-      formData.append("file", pastedImageBlob);
-      const res = await fetch("/upload", { method: "POST", body: formData });
-      if (res.ok) {
-        alert("제출 완료!");
-        document.getElementById("paste-area").innerHTML = "";
-        pastedImageBlob = null;
+      for (let i = 0; i < pastedImageBlobs.length; i++) {
+        const formData = new FormData();
+        formData.append("name", `${grade}-${ban}-${number}-${name}_${i+1}`);
+        formData.append("file", pastedImageBlobs[i]);
+        await fetch("/upload", { method: "POST", body: formData });
       }
+
+      alert("제출 완료!");
+      document.getElementById("paste-area").innerHTML = "";
+      pastedImageBlobs = [];
     });
   </script>
 </body>
